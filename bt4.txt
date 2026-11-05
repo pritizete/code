@@ -1,0 +1,58 @@
+
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+contract Stu {
+
+    // Structure
+    struct Studata {
+        string name;
+        uint256 rollno;
+    }
+
+    // Array
+    Studata[] public Stuarr;
+
+    // Add student
+    function addstu(string memory name, uint256 rollno) public {
+
+        // Check duplicate roll number
+        for (uint256 i = 0; i < Stuarr.length; i++) {
+            if (Stuarr[i].rollno == rollno) {
+                revert("Student already registered");
+            }
+        }
+
+        Stuarr.push(Studata(name, rollno));
+    }
+
+    // Get total number of students
+    function getstulen() public view returns (uint256) {
+        return Stuarr.length;
+    }
+
+    // Display all students
+    function display() public view returns (Studata[] memory) {
+        return Stuarr;
+    }
+
+    // Get student by index
+    function getstudbyindex(uint256 idx)
+        public
+        view
+        returns (Studata memory)
+    {
+        require(idx < Stuarr.length, "Index out of bounds");
+        return Stuarr[idx];
+    }
+
+    // Fallback function
+    fallback() external payable {
+        // Handles calls with unmatched function signatures
+    }
+
+    // Receive function
+    receive() external payable {
+        // Handles Ether sent without calldata
+    }
+}

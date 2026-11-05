@@ -1,0 +1,175 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans, AgglomerativeClustering
+from sklearn.decomposition import PCA
+
+from scipy.cluster.hierarchy import linkage, dendrogram
+
+# Load Dataset
+df = pd.read_csv(
+    "/content/drive/MyDrive/sales_data_sample.csv",
+    encoding="latin1"
+)
+
+print(df.head())
+print("\nDataset shape:", df.shape)
+print("\nMissing values:\n", df.isnull().sum())
+print("\nColumn names:\n", df.columns.tolist())
+
+# Select Features
+features = ["QUANTITYORDERED", "PRICEEACH", "SALES"]
+
+X = df[features].copy()
+
+X = X.apply(pd.to_numeric, errors="coerce")
+X = X.replace([np.inf, -np.inf], np.nan)
+X = X.fillna(X.median())
+
+# Feature Scaling
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+print("Preprocessed data shape:", X_scaled.shape)
+
+# Elbow Method
+wcss = []
+
+for k in range(1, 11):
+    model = KMeans(
+        n_clusters=k,
+        random_state=42,
+        n_init=10
+    )
+
+    model.fit(X_scaled)
+    wcss.append(model.inertia_)
+
+plt.figure(figsize=(8, 5))
+plt.plot(range(1, 11), wcss, marker="o")
+
+plt.title("Elbow Method for Optimal K")
+plt.xlabel("Number of Clusters (K)")
+plt.ylabel("WCSS")
+
+plt.xticks(range(1, 11))
+plt.grid(True)
+plt.show()
+
+# K-Means Clustering
+optimal_k = 3
+
+kmeans = KMeans(
+    n_clusters=optimal_k,
+    random_state=42,
+    n_init=10
+)
+
+df["KMeans_Cluster"] = kmeans.fit_predict(X_scaled)
+
+print("K-Means cluster counts:")
+print(df["KMeans_Cluster"].value_counts().sort_index())
+
+print("\nSample clustered data:")
+print(df[features + ["KMeans_Cluster"]].head(10))
+
+# PCA Visualization
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_scaled)
+
+plt.figure(figsize=(8, 6))
+
+sns.scatterplot(
+    x=X_pca[:, 0],
+    y=X_pca[:, 1],
+    hue=df["KMeans_Cluster"],
+    palette="viridis",
+    s=35
+)
+
+plt.title("K-Means Clustering of Sales Data")
+plt.xlabel("Principal Component 1")
+plt.ylabel("Principal Component 2")
+plt.legend(title="Cluster")
+plt.show()
+
+# Hierarchical Clustering Dendrogram
+sample_size = min(200, len(X_scaled))
+
+rng = np.random.default_rng(42)
+
+sample_indices = rng.choice(
+    len(X_scaled),
+    size=sample_size,
+    replace=False
+)
+
+X_sample = X_scaled[sample_indices]
+
+Z = linkage(X_sample, method="ward")
+
+plt.figure(figsize=(12, 6))
+
+dendrogram(
+    Z,
+    truncate_mode="lastp",
+    p=30,
+    leaf_rotation=90,
+    leaf_font_size=9
+)
+
+plt.title("Hierarchical Clustering Dendrogram")
+plt.xlabel("Sampled observations or merged clusters")
+plt.ylabel("Ward distance")
+
+plt.tight_layout()
+plt.show()
+
+# Agglomerative Hierarchical Clustering
+hierarchical = AgglomerativeClustering(
+    n_clusters=optimal_k,
+    linkage="ward"
+)
+
+df["Hierarchical_Cluster"] = hierarchical.fit_predict(X_scaled)
+
+print("Hierarchical cluster counts:")
+print(
+    df["Hierarchical_Cluster"]
+    .value_counts()
+    .sort_index()
+)
+
+# Compare Clustering Results
+print("\nComparison of clustering results:")
+
+print(
+    df[
+        features
+        + ["KMeans_Cluster", "Hierarchical_Cluster"]
+    ].head(10)
+)
+
+# Cluster Analysis
+cluster_summary = df.groupby("KMeans_Cluster")[features].mean()
+
+print("Average sales characteristics by cluster:")
+print(cluster_summary.round(2))
+
+# Average Sales Visualization
+cluster_summary["SALES"].plot(
+    kind="bar",
+    figsize=(8, 5),
+    color="steelblue"
+)
+
+plt.title("Average Sales by K-Means Cluster")
+plt.xlabel("Cluster")
+plt.ylabel("Average Sales")
+
+plt.xticks(rotation=0)
+plt.tight_layout()
+plt.show()

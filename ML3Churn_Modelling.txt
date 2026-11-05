@@ -1,0 +1,176 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, confusion_matrix
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.callbacks import EarlyStopping
+
+# Load Dataset
+df = pd.read_csv("Churn_Modelling.csv")
+
+print("First 5 rows:")
+print(df.head())
+
+print("\nShape of dataset:")
+print(df.shape)
+
+print("\nColumn names:")
+print(df.columns)
+
+# Remove Unnecessary Columns
+df = df.drop(["RowNumber", "CustomerId", "Surname"], axis=1)
+
+print("\nDataset after removing unnecessary columns:")
+print(df.head())
+
+# Convert Categorical Data into Numerical Data
+df = pd.get_dummies(
+    df,
+    columns=["Geography", "Gender"],
+    drop_first=True
+)
+
+print("Dataset after encoding:")
+print(df.head())
+
+# Separate Features and Target
+X = df.drop("Exited", axis=1)
+y = df["Exited"]
+
+print("Features:", X.columns)
+print("Target:", y.name)
+
+# Split Dataset
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.20,
+    random_state=42,
+    stratify=y
+)
+
+print("Training data:", X_train.shape)
+print("Testing data:", X_test.shape)
+
+# Feature Scaling
+scaler = StandardScaler()
+
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+print("Data normalization completed.")
+
+# Build Neural Network Model
+model = Sequential()
+
+# Input + First Hidden Layer
+model.add(Dense(
+    16,
+    activation="relu",
+    input_shape=(X_train.shape[1],)
+))
+
+# Second Hidden Layer
+model.add(Dense(8, activation="relu"))
+
+# Output Layer
+model.add(Dense(1, activation="sigmoid"))
+
+# Compile Model
+model.compile(
+    optimizer="adam",
+    loss="binary_crossentropy",
+    metrics=["accuracy"]
+)
+
+# Display Model Architecture
+print("\nNeural Network Architecture:")
+model.summary()
+
+# Train Model
+history = model.fit(
+    X_train,
+    y_train,
+    epochs=50,
+    batch_size=32,
+    validation_split=0.2,
+    verbose=1
+)
+
+# Predict Test Data
+y_probability = model.predict(X_test)
+
+# Convert Probabilities into 0 or 1
+y_pred = (y_probability >= 0.5).astype(int)
+
+# Calculate Accuracy
+accuracy = accuracy_score(y_test, y_pred)
+
+print("Accuracy of Neural Network:", accuracy)
+print("Accuracy Percentage:", accuracy * 100, "%")
+
+# Confusion Matrix
+cm = confusion_matrix(y_test, y_pred)
+
+print("Confusion Matrix:")
+print(cm)
+
+plt.figure(figsize=(6, 5))
+
+sns.heatmap(
+    cm,
+    annot=True,
+    fmt="d",
+    cmap="Blues",
+    xticklabels=["Stayed", "Exited"],
+    yticklabels=["Stayed", "Exited"]
+)
+
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.title("Confusion Matrix")
+plt.show()
+
+# Training and Validation Accuracy
+plt.figure(figsize=(8, 5))
+
+plt.plot(
+    history.history["accuracy"],
+    label="Training Accuracy"
+)
+
+plt.plot(
+    history.history["val_accuracy"],
+    label="Validation Accuracy"
+)
+
+plt.xlabel("Epochs")
+plt.ylabel("Accuracy")
+plt.title("Training and Validation Accuracy")
+plt.legend()
+plt.show()
+
+# Training and Validation Loss
+plt.figure(figsize=(8, 5))
+
+plt.plot(
+    history.history["loss"],
+    label="Training Loss"
+)
+
+plt.plot(
+    history.history["val_loss"],
+    label="Validation Loss"
+)
+
+plt.xlabel("Epochs")
+plt.ylabel("Loss")
+plt.title("Training and Validation Loss")
+plt.legend()
+plt.show()
